@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <title>Bookmark with Memory</title>
+  <style>
+    :root {
+      --primary-blue: #3255a4; /* Your blue color */
+      --safe-area-inset-bottom: env(safe-area-inset-bottom);
+    }
+
+    /* Classic CSS for the "+" Button */
+    #add-quote-btn {
+      position: absolute;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 60px;
+      height: 60px;
+      background-color: var(--primary-blue);
+      color: white;
+      font-size: 35px;
+      font-weight: bold;
+      border: none;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      cursor: pointer;
+      outline: none;
+    }
+
+    #add-quote-btn:focus {
+      box-shadow: 0 0 0 4px rgba(50, 85, 164, 0.5);
+    }
+
+    /* Hide delete button by default */
+    .delete-btn {
+      display: none;
+    }
+
+    /* Show delete button only when quote-card is clicked */
+    .quote-card.clicked .delete-btn {
+      display: inline-block;
+    }
+
+    /* Tailwind gradient override using the variable */
+    body {
+      background: linear-gradient(to top, var(--primary-blue) 10%, #d1e3ff 100%);
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    /* Safari-specific full height fix */
+    html,
+    body {
+      height: 100%;
+    }
+
+    .container {
+      min-height: 100vh;
+      height: calc(100vh - var(--safe-area-inset-bottom));
+    }
+  </style>
+</head>
+<body class="h-screen flex flex-col items-center justify-center">
+  <!-- Main Container -->
+  <div class="container w-full max-w-md flex flex-col relative">
+    <!-- Floating Plus Button -->
+    <button id="add-quote-btn">+</button>
+
+    <!-- Scrollable Quotes List -->
+    <div id="quotes-container" class="flex-grow overflow-y-auto px-4 pt-24 pb-6 space-y-4">
+      <!-- Cards will be dynamically added here -->
+    </div>
+  </div>
+
+  <!-- Modal -->
+  <div
+    id="modal"
+    class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden"
+  >
+    <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-sm">
+      <h2 class="text-lg font-bold mb-4">Add a Quote</h2>
+      <textarea
+        id="quote-input"
+        class="w-full h-24 p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4"
+        placeholder="Write your quote here..."
+      ></textarea>
+      <div class="flex justify-end space-x-4">
+        <button
+          id="cancel-btn"
+          class="px-4 py-2 bg-gray-300 rounded-lg text-gray-700 hover:bg-gray-400"
+        >
+          Cancel
+        </button>
+        <button
+          id="save-btn"
+          class="px-4 py-2 text-white rounded-lg hover:bg-blue-600"
+          style="background-color: var(--primary-blue);"
+        >
+          Save
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Get elements
+    const addQuoteBtn = document.getElementById('add-quote-btn');
+    const modal = document.getElementById('modal');
+    const cancelBtn = document.getElementById('cancel-btn');
+    const saveBtn = document.getElementById('save-btn');
+    const quoteInput = document.getElementById('quote-input');
+    const quotesContainer = document.getElementById('quotes-container');
+
+    // Load quotes from local storage
+    function loadQuotes() {
+      const quotes = JSON.parse(localStorage.getItem('quotes')) || [];
+      quotes.forEach(addQuoteCard);
+    }
+
+    // Save quote to local storage
+    function saveQuoteToStorage(quote) {
+      const quotes = JSON.parse(localStorage.getItem('quotes')) || [];
+      quotes.push(quote);
+      localStorage.setItem('quotes', JSON.stringify(quotes));
+    }
+
+    // Remove quote from local storage
+    function removeQuoteFromStorage(quoteText) {
+      let quotes = JSON.parse(localStorage.getItem('quotes')) || [];
+      quotes = quotes.filter((quote) => quote !== quoteText);
+      localStorage.setItem('quotes', JSON.stringify(quotes));
+    }
+
+    // Add a new quote card
+    function addQuoteCard(quoteText) {
+      const quoteCard = document.createElement('div');
+      quoteCard.className =
+        'quote-card p-4 bg-gray-100 rounded-lg shadow-md text-gray-800 flex justify-between items-center';
+      quoteCard.textContent = quoteText;
+
+      // Delete button
+      const deleteBtn = document.createElement('button');
+      deleteBtn.textContent = 'Delete';
+      deleteBtn.className =
+        'delete-btn ml-4 px-2 py-1 text-sm rounded-lg text-white';
+      deleteBtn.style.backgroundColor = 'var(--primary-blue)';
+      deleteBtn.addEventListener('click', () => {
+        const confirmation = document.createElement('span');
+        confirmation.textContent = 'Are you sure? ';
+        confirmation.className = 'text-sm text-gray-600';
+
+        const confirmDeleteBtn = document.createElement('button');
+        confirmDeleteBtn.textContent = 'Yes';
+        confirmDeleteBtn.className =
+          'ml-2 px-2 py-1 text-sm bg-red-500 text-white rounded-lg hover:bg-red-600';
+        confirmDeleteBtn.addEventListener('click', () => {
+          quotesContainer.removeChild(quoteCard);
+          removeQuoteFromStorage(quoteText);
+        });
+
+        // Replace the delete button with confirmation
+        deleteBtn.replaceWith(confirmation);
+        confirmation.appendChild(confirmDeleteBtn);
+      });
+
+      // Click to reveal delete button
+      quoteCard.addEventListener('click', () => {
+        quoteCard.classList.toggle('clicked');
+      });
+
+      quoteCard.appendChild(deleteBtn);
+      quotesContainer.appendChild(quoteCard);
+    }
+
+    // Show modal
+    addQuoteBtn.addEventListener('click', () => {
+      modal.classList.remove('hidden');
+    });
+
+    // Hide modal
+    cancelBtn.addEventListener('click', () => {
+      quoteInput.value = '';
+      modal.classList.add('hidden');
+    });
+
+    // Save quote
+    saveBtn.addEventListener('click', () => {
+      const quoteText = quoteInput.value.trim();
+      if (quoteText) {
+        addQuoteCard(quoteText);
+        saveQuoteToStorage(quoteText);
+        quoteInput.value = '';
+        modal.classList.add('hidden');
+
+        // Scroll to the bottom after adding a new quote
+        quotesContainer.scrollTop = quotesContainer.scrollHeight;
+      }
+    });
+
+    // Load quotes on page load
+    loadQuotes();
+  </script>
+</body>
+</html>
